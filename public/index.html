@@ -3260,14 +3260,35 @@
   }
 
   function drawToCanvas(drawable, w, h, transparent){
+    var targetW = Math.max(1, Math.round(w)), targetH = Math.max(1, Math.round(h));
+    var srcW = drawable.width, srcH = drawable.height;
+    var cur = drawable.img, curW = srcW, curH = srcH, scratch = null;
+    // Shrinking more than ~2x in a single drawImage pass leaves visible aliasing —
+    // the browser's built-in resampler isn't a true box filter at large ratios.
+    // Stepping down through successive half-size passes (a standard mip-chain
+    // downsample) hands the encoder cleaner input, so the same byte budget buys
+    // a noticeably sharper result at the target size.
+    while (curW > targetW * 2 && curH > targetH * 2){
+      var nextW = Math.max(targetW, Math.round(curW / 2));
+      var nextH = Math.max(targetH, Math.round(curH / 2));
+      var step = document.createElement("canvas");
+      step.width = nextW; step.height = nextH;
+      var sctx = step.getContext("2d");
+      sctx.imageSmoothingEnabled = true; sctx.imageSmoothingQuality = "high";
+      if (!transparent){ sctx.fillStyle = "#FFFFFF"; sctx.fillRect(0, 0, nextW, nextH); }
+      sctx.drawImage(cur, 0, 0, curW, curH, 0, 0, nextW, nextH);
+      if (scratch) releaseCanvas(scratch);
+      cur = step; scratch = step; curW = nextW; curH = nextH;
+    }
     var canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(w)); canvas.height = Math.max(1, Math.round(h));
+    canvas.width = targetW; canvas.height = targetH;
     var ctx = canvas.getContext("2d");
     ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
     if (!transparent){
-      ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, targetW, targetH);
     }
-    ctx.drawImage(drawable.img, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(cur, 0, 0, curW, curH, 0, 0, targetW, targetH);
+    if (scratch) releaseCanvas(scratch);
     return canvas;
   }
 
@@ -3288,6 +3309,78 @@
     return _webpEncodeSupport;
   }
 
+  // Same silent-fallback problem as WebP above, but for AVIF: at a given quality it
+  // typically needs 30-50% fewer bytes than JPEG/WebP for comparable visual quality,
+  // so it's worth preferring wherever the browser can actually encode it. Support is
+  // still spotty (most Chromium builds decode but don't encode AVIF; Safari does),
+  // so this always degrades safely to WebP/JPEG when it isn't available.
+  var _avifEncodeSupport = null;
+  function supportsAvifEncode(){
+    if (_avifEncodeSupport !== null) return _avifEncodeSupport;
+    try {
+      var c = document.createElement("canvas"); c.width = c.height = 1;
+      _avifEncodeSupport = c.toDataURL("image/avif").indexOf("data:image/avif") === 0;
+    } catch(e){ _avifEncodeSupport = false; }
+    return _avifEncodeSupport;
+  }
+
+  // Optional best-in-class JPEG encoder (MozJPEG, compiled to WASM via jSquash — the
+  // same encoder Squoosh and ImageOptim use), applied as ONE extra refinement pass
+  // after the fast native search already has a result that fits the target. MozJPEG's
+  // trellis quantization and better Huffman tables typically shave another 10-15% off
+  // a same-quality browser-native JPEG, and the output is a completely ordinary JPEG
+  // file — no compatibility risk, just a possible size/quality upgrade.
+  //
+  // This is loaded lazily, once, from a CDN, so it depends on the page being allowed to
+  // fetch it (network available, no CSP blocking unpkg.com/script or WASM). Every step
+  // is wrapped in a timeout + try/catch: if the module fails to load, the WASM binary
+  // fails to fetch, or an encode call hangs or throws, this quietly returns null and
+  // the caller keeps the native-encoded result it already had. It can upgrade a result;
+  // it can never break or block one.
+  var _mozjpegEncodePromise = null;
+  var _mozjpegUnavailable = false;
+  function loadMozjpegEncoder(){
+    if (_mozjpegUnavailable) return Promise.resolve(null);
+    if (_mozjpegEncodePromise) return _mozjpegEncodePromise;
+    _mozjpegEncodePromise = (async function(){
+      try {
+        var mod = await Promise.race([
+          import(/* webpackIgnore: true */ "https://unpkg.com/@jsquash/jpeg/encode.js?module"),
+          sleep(4000).then(function(){ throw new Error("mozjpeg module load timed out"); })
+        ]);
+        var encode = mod && (mod.default || mod);
+        if (typeof encode !== "function") throw new Error("unexpected mozjpeg module shape");
+        // A throwaway 1x1 encode confirms the WASM binary behind the module actually
+        // fetched and instantiated — a successful JS import alone doesn't guarantee that.
+        await Promise.race([
+          encode({ data: new Uint8ClampedArray([255,255,255,255]), width: 1, height: 1 }, { quality: 75 }),
+          sleep(4000).then(function(){ throw new Error("mozjpeg wasm init timed out"); })
+        ]);
+        return encode;
+      } catch(e){
+        _mozjpegUnavailable = true;
+        return null;
+      }
+    })();
+    return _mozjpegEncodePromise;
+  }
+
+  async function mozjpegRefine(canvas, quality){
+    var encode = await loadMozjpegEncoder();
+    if (!encode) return null;
+    try {
+      var ctx = canvas.getContext("2d");
+      var imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      var q = Math.max(1, Math.min(100, Math.round(quality * 100)));
+      var buf = await Promise.race([
+        encode({ data: imgData.data, width: canvas.width, height: canvas.height }, { quality: q }),
+        sleep(6000).then(function(){ throw new Error("mozjpeg encode timed out"); })
+      ]);
+      if (!buf || !buf.byteLength) return null;
+      return new Blob([buf], { type: "image/jpeg" });
+    } catch(e){ return null; }
+  }
+
   async function compressImage(record, opts, onProgress){
     var drawable = await loadDrawable(record.file);
     var ext = extOf(record.file.name);
@@ -3302,18 +3395,23 @@
     // of forcing an opaque JPEG. GIF is left as PNG since animation isn't preserved either way.
     var hasAlpha = record.hasAlpha || false;
     var webpOk = supportsWebpEncode();
+    var avifOk = supportsAvifEncode();
     var outMime;
     if (hasAlpha){
-      // Canvas-to-WebP encoding preserves alpha, unlike JPEG. Fall back to PNG (still
-      // alpha-safe, just not quality-tunable) on browsers that can't encode WebP.
-      outMime = webpOk ? "image/webp" : "image/png";
+      // AVIF and WebP both encode alpha losslessly-composited-into-lossy the same
+      // way JPEG can't. Prefer AVIF (smallest at a given quality), then WebP, and
+      // only fall back to PNG (alpha-safe but not quality-tunable) if the browser
+      // can encode neither.
+      outMime = avifOk ? "image/avif" : (webpOk ? "image/webp" : "image/png");
     } else if ((isPng || isSvg || isGif) && !opts.allowConvert){
       outMime = "image/png";
+    } else if (avifOk){
+      outMime = "image/avif";
     } else {
       outMime = (originalMime === "image/webp" && webpOk) ? "image/webp" : "image/jpeg";
     }
-    var canScaleQuality = outMime === "image/jpeg" || outMime === "image/webp";
-    var keepTransparent = outMime === "image/webp" && hasAlpha;
+    var canScaleQuality = outMime === "image/jpeg" || outMime === "image/webp" || outMime === "image/avif";
+    var keepTransparent = (outMime === "image/webp" || outMime === "image/avif") && hasAlpha;
 
     try {
       var target = opts.targetBytes; var best = null; var scale = 1;
@@ -3328,17 +3426,38 @@
         var cv = drawToCanvas(drawable, w, h, keepTransparent);
 
         if (canScaleQuality){
-          var lo = 0.04, hi = 0.95, innerBest = null;
-          for (var i = 0; i < 7; i++){
+          // Encoded size grows roughly with quality^1.6 in the mid-range for
+          // JPEG/WebP/AVIF alike. Rather than always bisecting blind from 0.5,
+          // seed the search with the quality this size ratio predicts — usually
+          // lands within a step or two of the answer, so fewer encode passes are
+          // needed to reach the same (or tighter) precision than a plain
+          // 7-step binary search, which speeds up bulk jobs noticeably.
+          var lo = 0.02, hi = 0.97, innerBest = null;
+          var sizeRatio = target / Math.max(1, w * h * (keepTransparent ? 3.2 : 2.4));
+          var seedQ = Math.max(0.05, Math.min(0.9, Math.pow(Math.max(0.001, sizeRatio), 1 / 1.6)));
+          var seedBlob = await canvasToBlob(cv, outMime, seedQ);
+          completedSteps++;
+          if (seedBlob){ if (seedBlob.size <= target){ innerBest = seedBlob; lo = seedQ; } else { hi = seedQ; } }
+          for (var i = 0; i < 6; i++){
             if (onProgress) onProgress("Tuning quality…", completedSteps / totalSteps);
             var mid = (lo + hi) / 2;
             var b = await canvasToBlob(cv, outMime, mid);
             completedSteps++; if (!b) break;
             if (b.size <= target){ innerBest = b; lo = mid; } else { hi = mid; }
-            if (hi - lo < 0.01) break;
+            if (hi - lo < 0.008) break;
             await sleep(0);
           }
-          if (!innerBest) innerBest = await canvasToBlob(cv, outMime, 0.04);
+          if (!innerBest) innerBest = await canvasToBlob(cv, outMime, lo);
+          // One-shot MozJPEG refinement: only for the JPEG path (the common case, since
+          // AVIF/WebP already win when available), only once per resize step, at the
+          // quality the fast native search already converged on. Keeps it only if it's
+          // both smaller and still within target — falls back to the native result
+          // silently otherwise (see loadMozjpegEncoder for the guarantees).
+          if (innerBest && outMime === "image/jpeg"){
+            if (onProgress) onProgress("Refining with MozJPEG…", completedSteps / totalSteps);
+            var refined = await mozjpegRefine(cv, lo);
+            if (refined && refined.size < innerBest.size && refined.size <= target) innerBest = refined;
+          }
           if (innerBest && (!best || innerBest.size < best.size)) best = innerBest;
           if (innerBest && innerBest.size <= target){ releaseCanvas(cv); drawable.revoke(); return { blob: innerBest, mime: outMime, note: null, formatChanged: outMime !== originalMime }; }
         } else {
