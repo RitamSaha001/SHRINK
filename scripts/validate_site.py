@@ -61,6 +61,8 @@ def public_html_pages() -> list[Path]:
 
 def page_url(path: Path) -> str:
     relative = path.relative_to(PUBLIC)
+    if relative.as_posix() == "index.html":
+        return SITE_ORIGIN + "/"
     if relative.name == "index.html":
         relative = relative.parent
     return SITE_ORIGIN + "/" + str(relative).replace("\\", "/").strip("/") + "/"
@@ -83,7 +85,11 @@ def href_to_public_path(page: Path, href: str) -> Path | None:
     if target.startswith("/"):
         relative = target.lstrip("/")
     else:
-        relative = str((page.parent / target).resolve().relative_to(PUBLIC.resolve())).replace("\\", "/")
+        resolved = (page.parent / target).resolve()
+        try:
+            relative = str(resolved.relative_to(PUBLIC.resolve())).replace("\\", "/")
+        except ValueError:
+            return None
 
     candidate = PUBLIC / relative
     if candidate.is_file():
@@ -112,17 +118,13 @@ def main() -> int:
 
     if not pages:
         errors.append("No HTML pages found under public/")
-        pages = []
 
     sitemap_urls = load_sitemap_urls()
-    expected_sitemap = {page_url(p).rstrip("/") + "/" for p in pages}
+    expected_sitemap = {page_url(p) for p in pages}
 
-    missing_from_sitemap = sorted(expected_sitemap - sitemap_urls)
-    extra_in_sitemap = sorted(sitemap_urls - expected_sitemap)
-
-    for url in missing_from_sitemap:
+    for url in sorted(expected_sitemap - sitemap_urls):
         warnings.append(f"HTML page missing from sitemap: {url}")
-    for url in extra_in_sitemap:
+    for url in sorted(sitemap_urls - expected_sitemap):
         errors.append(f"Sitemap URL has no matching HTML page: {url}")
 
     seen_canonicals: dict[str, Path] = {}
@@ -149,8 +151,9 @@ def main() -> int:
             errors.append(f"{page}: missing canonical")
         elif canonical.rstrip("/") != expected.rstrip("/"):
             errors.append(f"{page}: canonical mismatch; expected {expected}, got {canonical}")
-        elif canonical in seen_canonicals:
-            errors.append(f"Duplicate canonical {canonical}: {seen_canonicals[canonical]} and {page}")
+        elif canonical.rstrip("/") in {key.rstrip("/") for key in seen_canonicals}:
+            previous = next(path for key, path in seen_canonicals.items() if key.rstrip("/") == canonical.rstrip("/"))
+            errors.append(f"Duplicate canonical {canonical}: {previous} and {page}")
         else:
             seen_canonicals[canonical] = page
 
@@ -158,12 +161,10 @@ def main() -> int:
             warnings.append(f"{page}: contains TODO/placeholder text")
 
         for href in parser.links:
-            target = href_to_public_path(page, href)
             parsed = urlparse(href)
             local = not parsed.scheme and not parsed.netloc
             same_origin = parsed.netloc == urlparse(SITE_ORIGIN).netloc if parsed.netloc else True
             if (local or same_origin) and href_to_public_path(page, href) is None:
-                # Ignore links to the root fragment only; those were filtered above.
                 errors.append(f"{page}: broken internal link: {href}")
 
     robots = PUBLIC / "robots.txt"
