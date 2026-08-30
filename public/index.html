@@ -14,10 +14,10 @@
 <!-- Favicon (inline SVG, no extra file to host) -->
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%231B1B18'/%3E%3Ctext x='50' y='68' font-family='Arial, sans-serif' font-size='58' font-weight='700' fill='%23F7F6F3' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E" />
 
-<!-- Social previews. TODO before launch: replace REPLACE_WITH_YOUR_DOMAIN with the real
-     published URL, and og:image with a real hosted PNG (~1200×630) — data URIs and
-     relative paths are ignored by Facebook/Twitter/LinkedIn/Slack link-preview crawlers,
-     they need an actual https:// image URL. -->
+<!-- Social previews. og:image points at the production domain; if og-image.png isn't
+     actually hosted yet, add a real ~1200×630 PNG there — link-preview crawlers
+     (Facebook/Twitter/LinkedIn/Slack) need an actual https:// image URL, not a data
+     URI or relative path. -->
 <link rel="canonical" href="https://shrink.saharitam171.workers.dev/" />
 <meta property="og:type" content="website" />
 <meta property="og:title" content="Shrink — compress files to the size you need" />
@@ -336,7 +336,7 @@
   .file-name{ font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .file-meta{ margin-top:3px; font-size:12.5px; color:var(--ink-faint); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
   .file-meta .sep{ color:var(--line-strong); }
-  .file-status-text{ color:var(--ink-soft); }
+  .file-status-text{ color:var(--ink-soft); min-width:0; overflow-wrap:anywhere; }
   .file-status-text.is-error{ color:var(--bad); }
   .file-status-text.is-warn{ color:var(--warn); }
   .file-status-text.is-good{ color:var(--good); }
@@ -649,7 +649,7 @@
 
   <div class="panel" id="settingsPanel">
     <div class="file-list" id="fileList"></div>
-    <div class="empty-state" id="emptyState">No files added yet.</div>
+    <div class="empty-state" id="emptyState">No files added yet — drop something above to get started.</div>
   </div>
 
   <div class="batch-ai-panel" id="batchAiPanel">
@@ -682,7 +682,7 @@
   </div>
 
   <div class="footer">
-    <span>Shrink — a local, offline compressor.</span>
+    <span>Shrink — a local, browser-based compressor.</span>
     <span>Copyright © 2026 Ritam Saha. All rights reserved.</span>
     <button class="modal-link" id="privacyLinkBtn" type="button" style="margin:0;">Privacy &amp; how this works</button>
   </div>
@@ -748,7 +748,7 @@
 <template id="rowTemplate">
   <div class="file-item-wrap" data-wrap>
     <div class="file-row" data-row>
-      <div class="file-thumb" data-thumb>FILE</div>
+      <div class="file-thumb" data-thumb aria-hidden="true">FILE</div>
       <div class="file-main">
         <div class="file-name" data-name></div>
         <div class="file-meta">
@@ -759,7 +759,7 @@
         <div class="gauge state-pending" data-meter></div>
       </div>
       <div class="target-mini-group" data-target-group>
-        <input type="number" class="target-input-mini mono" data-target min="1" step="0.01" />
+        <input type="number" class="target-input-mini mono" data-target min="1" step="0.01" aria-label="Target compressed size" />
         <button class="unit-mini mono" data-unit type="button" title="Toggle unit">KB</button>
       </div>
       <div class="file-actions">
@@ -1161,8 +1161,8 @@
       defaultModel: "claude-haiku-4-5-20251001",
       models: [
         { id: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5 — recommended, fast" },
-        { id: "claude-sonnet-4-5-20250929", label: "Claude Sonnet 4.5 — balanced" },
-        { id: "claude-opus-4-1-20250805", label: "Claude Opus 4.1 — most capable, slower" }
+        { id: "claude-sonnet-5", label: "Claude Sonnet 5 — balanced" },
+        { id: "claude-opus-5", label: "Claude Opus 5 — most capable, slower" }
       ],
       buildRequest: function(ctx){
         var content = [{ type: "text", text: ctx.promptText }].concat(ctx.images.map(function(b64){
@@ -1523,14 +1523,50 @@
     }
   });
 
+  // ---- Shared modal focus trapping -----------------------------------------
+  // Keeps Tab/Shift+Tab cycling inside whichever dialog is open (instead of
+  // leaking into the page behind it) and restores focus to whatever opened the
+  // dialog once it closes. Kept intentionally small: it reads the currently
+  // focusable elements live each keypress rather than caching a snapshot, so it
+  // stays correct even as a dialog's own content changes (e.g. the AI modal's
+  // custom-model field toggling visible).
+  var modalReturnFocusEl = null;
+  function getFocusableIn(container){
+    if (!container) return [];
+    var nodes = container.querySelectorAll(
+      'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    );
+    return Array.prototype.filter.call(nodes, function(n){ return n.offsetParent !== null; });
+  }
+  function trapModalTab(e, container){
+    if (e.key !== "Tab") return;
+    var focusables = getFocusableIn(container);
+    if (!focusables.length) return;
+    var first = focusables[0], last = focusables[focusables.length - 1];
+    if (e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+  }
+  function openModal(overlayEl, containerEl, focusEl){
+    modalReturnFocusEl = document.activeElement;
+    overlayEl.classList.add("is-visible");
+    setTimeout(function(){
+      var target = focusEl || getFocusableIn(containerEl)[0];
+      if (target) target.focus();
+    }, 30);
+  }
+  function closeModalFocus(){
+    var toFocus = modalReturnFocusEl;
+    modalReturnFocusEl = null;
+    try { if (toFocus && document.contains(toFocus)) toFocus.focus(); } catch(e){}
+  }
+
   function openAiModal(){
     syncModalForProvider(AiSettings.getProvider());
-    el.aiModalOverlay.classList.add("is-visible");
-    setTimeout(function(){ el.aiKeyInput.focus(); }, 30);
+    openModal(el.aiModalOverlay, el.aiModalForm, el.aiKeyInput);
   }
   function closeAiModal(){
     el.aiModalOverlay.classList.remove("is-visible");
-    try { el.aiSettingsBtn.focus(); } catch(e){}
+    closeModalFocus();
   }
   function saveAiModal(){
     var hadAccess = AiSettings.isEnabled();
@@ -1558,15 +1594,21 @@
   }
   // Escape closed nothing before — the modal could only be dismissed by clicking.
   document.addEventListener("keydown", function(e){
-    if (e.key === "Escape" && el.aiModalOverlay.classList.contains("is-visible")) closeAiModal();
-    if (e.key === "Escape" && el.privacyModalOverlay && el.privacyModalOverlay.classList.contains("is-visible")) closePrivacyModal();
+    var aiOpen = el.aiModalOverlay.classList.contains("is-visible");
+    var privacyOpen = el.privacyModalOverlay && el.privacyModalOverlay.classList.contains("is-visible");
+    if (e.key === "Escape" && aiOpen) closeAiModal();
+    if (e.key === "Escape" && privacyOpen) closePrivacyModal();
+    // Trap Tab/Shift+Tab inside whichever dialog is currently open so keyboard
+    // focus can't leak to the (visually dimmed) page behind it.
+    if (aiOpen) trapModalTab(e, el.aiModalForm);
+    else if (privacyOpen) trapModalTab(e, el.privacyModalOverlay.querySelector(".modal"));
   });
 
   var privacyLinkBtn = document.getElementById("privacyLinkBtn");
   el.privacyModalOverlay = document.getElementById("privacyModalOverlay");
   var privacyModalCloseBtn = document.getElementById("privacyModalCloseBtn");
-  function openPrivacyModal(){ el.privacyModalOverlay.classList.add("is-visible"); }
-  function closePrivacyModal(){ el.privacyModalOverlay.classList.remove("is-visible"); }
+  function openPrivacyModal(){ openModal(el.privacyModalOverlay, el.privacyModalOverlay.querySelector(".modal")); }
+  function closePrivacyModal(){ el.privacyModalOverlay.classList.remove("is-visible"); closeModalFocus(); }
   if (privacyLinkBtn){ privacyLinkBtn.addEventListener("click", openPrivacyModal); }
   if (privacyModalCloseBtn){ privacyModalCloseBtn.addEventListener("click", closePrivacyModal); }
   if (el.privacyModalOverlay){
@@ -1987,7 +2029,9 @@
   // of hitting the provider directly from the browser (see shrink-ai-relay.gs).
   //   - If the person has their own API key saved in AI settings, the relay just
   //     forwards that key through untouched — same behavior as calling the provider
-  //     directly, just with an extra hop.
+  //     directly, just with an extra hop. This indirection is intentional (some
+  //     providers don't reliably support calling them straight from a browser), so
+  //     AI requests always go through this relay whether or not a personal key is set.
   //   - If they don't, the relay substitutes a shared key you (the site owner) store
   //     in the script's Script Properties, and enforces a small per-day limit per
   //     anonymous browser so one shared key can't be exhausted by a single visitor.
@@ -1997,10 +2041,11 @@
   // Leave this empty to keep the original fully client-side, bring-your-own-key-only
   // behavior (e.g. for local development without a deployed relay).
   var RELAY_URL = "https://script.google.com/macros/s/AKfycbw4uQ8VXxqgTp6l7BRsgmuS92SSUQRh-AKaJBZE8570guGg3RzSbunfC2ON7huFSw2mrw/exec";
-  // Must match APP_SECRET in shrink-ai-relay.gs. Not a real security boundary (it's
-  // sitting in this file's source, visible to anyone who looks) — it just keeps
-  // casual scans and copy-pasted curl requests from hitting the relay directly and
-  // burning the shared quota/keys. Leave both blank to disable the check entirely.
+  // Must match APP_SECRET in shrink-ai-relay.gs. This is NOT a real secret and grants
+  // no authentication — it ships in this file's source, visible to anyone who views
+  // it. It only adds a little friction against casual scans and copy-pasted curl
+  // requests hitting the relay directly to burn the shared quota/keys. Leave both
+  // blank to disable the check entirely.
   var RELAY_SECRET = "shrink-9f2ab7c1";
 
   var AI_CLIENT_ID_STORAGE = "shrink.ai.clientId";
@@ -3117,6 +3162,35 @@
     gaugeMotionFrame = requestAnimationFrame(frame);
   }
 
+  // A very large image can decode to an enormous pixel grid even when its file size
+  // is well under the app's byte-size input limit (e.g. a huge uncompressed TIFF-like
+  // PNG or a giant camera panorama). Rasterizing that straight onto a canvas can
+  // allocate hundreds of MB to GB of memory and crash the tab, especially on
+  // low-memory mobile devices. This mirrors the same budget/scale-down approach
+  // already used for PDF page rendering (see PDF_RENDER_PIXEL_BUDGET) but sized for
+  // whole photos rather than single PDF pages.
+  var IMAGE_PIXEL_BUDGET = 40000000;  // ~40 megapixels decoded — well above normal phone/camera photos
+  var MAX_IMAGE_CANVAS_DIM = 8192;    // per-axis ceiling; keeps canvas allocation safe across browsers/GPUs
+  var IMAGE_ABSOLUTE_PIXEL_CEILING = 600000000; // ~600 MP — beyond this we refuse rather than try to scale
+
+  // Computes a safe raster size for an image BEFORE any canvas is created, so we
+  // never allocate an unnecessarily huge canvas just to immediately shrink it.
+  // Returns the same width/height back, untouched, for images already within budget.
+  function getSafeImageDimensions(width, height){
+    width = Math.max(1, Math.round(width || 0));
+    height = Math.max(1, Math.round(height || 0));
+    var px = width * height;
+    var scale = 1;
+    if (px > IMAGE_PIXEL_BUDGET) scale = Math.sqrt(IMAGE_PIXEL_BUDGET / px);
+    if (width * scale > MAX_IMAGE_CANVAS_DIM) scale = Math.min(scale, MAX_IMAGE_CANVAS_DIM / width);
+    if (height * scale > MAX_IMAGE_CANVAS_DIM) scale = Math.min(scale, MAX_IMAGE_CANVAS_DIM / height);
+    return {
+      width: Math.max(1, Math.round(width * scale)),
+      height: Math.max(1, Math.round(height * scale)),
+      downscaled: scale < 1
+    };
+  }
+
   function loadDrawable(file){
     return new Promise(function(resolve, reject){
       var url = URL.createObjectURL(file); var img = new Image();
@@ -3125,9 +3199,21 @@
         // 1x1 pixel output file. Fall back to a sensible raster size.
         var w = img.naturalWidth || img.width || 1024;
         var h = img.naturalHeight || img.height || 1024;
-        resolve({ img: img, width: w, height: h, revoke: function(){ URL.revokeObjectURL(url); } });
+        if ((w * h) > IMAGE_ABSOLUTE_PIXEL_CEILING || !isFinite(w * h)){
+          URL.revokeObjectURL(url);
+          reject(new Error("This image's dimensions are too large to process safely in the browser. Try resizing it first."));
+          return;
+        }
+        var safe = getSafeImageDimensions(w, h);
+        resolve({
+          img: img,
+          width: safe.width,
+          height: safe.height,
+          downscaledFromSource: safe.downscaled,
+          revoke: function(){ URL.revokeObjectURL(url); }
+        });
       };
-      img.onerror = function(){ URL.revokeObjectURL(url); reject(new Error("Could not read this image.")); };
+      img.onerror = function(){ URL.revokeObjectURL(url); reject(new Error("Could not read this image — it may be corrupted or in an unsupported format.")); };
       img.src = url;
     });
   }
@@ -3345,8 +3431,17 @@
       }
     } catch(e){}
 
-    var loadingTask = pdfjsLib.getDocument({ data: arrayBuffer.slice(0) });
-    var pdf = await loadingTask.promise;
+    var pdf;
+    try {
+      var loadingTask = pdfjsLib.getDocument({ data: arrayBuffer.slice(0) });
+      pdf = await loadingTask.promise;
+    } catch(err){
+      // pdf.js throws its own internal error classes/messages here (bad xref table,
+      // missing header, encrypted-without-a-usable-password, etc.) — none of that is
+      // meaningful to someone who just tried to compress a file, so replace it with a
+      // single actionable message instead of leaking the raw parser error.
+      throw new Error("Could not read this PDF — it may be corrupted, password-protected, or not a valid PDF file.");
+    }
     var target = opts.targetBytes;
     var scaleLevels = (record.localAnalysis && !record.localAnalysis.looksScanned)
       ? [1.9, 1.6, 1.3, 1.05, 0.85, 0.65, 0.5]
