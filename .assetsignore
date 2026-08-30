@@ -1,0 +1,10 @@
+.git
+.git/**
+.wrangler
+.wrangler/**
+README.md
+LICENSE.txt
+THIRD_PARTY_NOTICES.txt
+wrangler.jsonc
+.assetsignore
+shrink-ai-relay.gs
