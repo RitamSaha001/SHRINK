@@ -446,6 +446,13 @@
     scrollbar-width:thin; scrollbar-color:var(--line-strong) transparent;
     animation:slideDown .2s cubic-bezier(.22,1,.36,1);
   }
+  /* Wider variant for dialogs with more to show at once (AI settings' provider tabs
+     + fields, the longer privacy write-up) — kept as an additive modifier so any
+     other .modal (if one is ever added) keeps the original compact sizing. Bounded
+     by vw/vh rather than fixed px so it scales down gracefully on small phones and
+     never exceeds the viewport, and stays comfortably readable on large desktop
+     monitors without stretching into an uncomfortable line length. */
+  .modal.modal-wide{ max-width:min(94vw, 560px); max-height:min(84vh, 760px); }
   .modal::-webkit-scrollbar{ width:7px; }
   .modal::-webkit-scrollbar-track{ background:transparent; }
   .modal::-webkit-scrollbar-thumb{ background-color:var(--line-strong); border-radius:99px; }
@@ -453,6 +460,12 @@
   .modal-title{ font-size:16px; font-weight:700; display:flex; align-items:center; gap:8px; }
   .modal-desc{ margin-top:8px; font-size:13px; color:var(--ink-soft); line-height:1.55; }
   .modal-desc a{ color:var(--accent); text-decoration:underline; text-underline-offset:2px; }
+  .modal-desc p{ margin:0 0 11px; }
+  .modal-desc p:last-child{ margin-bottom:0; }
+  .modal-desc h4{ margin:18px 0 6px; font-size:12.5px; font-weight:700; color:var(--ink); letter-spacing:.01em; }
+  .modal-desc h4:first-child{ margin-top:0; }
+  .modal-desc ul{ margin:6px 0 11px; padding-left:19px; }
+  .modal-desc li{ margin:4px 0; }
   .modal-field{ margin-top:16px; }
   .modal-field label{ display:block; font-size:12px; font-weight:650; color:var(--ink-soft); margin-bottom:6px; }
   .modal-field input, .modal-field select{ width:100%; padding:10px 11px; border-radius:var(--r-sm); border:1px solid var(--line); background:var(--bg); color:var(--ink); font-size:13.5px; }
@@ -571,6 +584,7 @@
   }
   @media (max-width:560px){
     .modal{ max-width:360px; max-height:min(82vh, 560px); border-radius:var(--r-lg); padding:18px 18px 0; }
+    .modal.modal-wide{ max-width:min(94vw, 420px); max-height:min(86vh, 640px); }
     .modal-actions{ margin-left:-18px; margin-right:-18px; padding:12px 18px; border-radius:0 0 var(--r-lg) var(--r-lg); }
     .hero{ padding-top:30px; }
     .compression-orbit{ height:198px; border-radius:22px; }
@@ -689,15 +703,42 @@
 </div>
 
 <div class="modal-overlay" id="privacyModalOverlay">
-  <div class="modal" role="dialog" aria-labelledby="privacyModalTitle" aria-modal="true">
+  <div class="modal modal-wide" role="dialog" aria-labelledby="privacyModalTitle" aria-modal="true">
     <div class="modal-title" id="privacyModalTitle">Privacy &amp; how this works</div>
     <div class="modal-desc" style="margin-top:12px;">
-      <p><strong>Compression is 100% local.</strong> Files never leave this browser tab — everything runs on your device using JavaScript, and nothing is uploaded anywhere.</p>
-      <p><strong>The optional AI assistant</strong> only ever sends a file's measured properties (size, dimensions, page count, and similar metadata) to whichever provider you pick — never the file itself.</p>
-      <p><strong>API keys</strong> you add are stored only in this browser's local storage, on your device — they are never sent anywhere except directly to the provider you're using them with (or relayed untouched, see below).</p>
-      <p><strong>Without your own key</strong>, AI requests go through a small relay that substitutes a shared key for Gemini/Groq and applies a daily limit per browser, identified by a random, anonymous id also stored in local storage. That id carries no personal information.</p>
-      <p><strong>No tracking.</strong> This page sets no cookies and runs no analytics or advertising scripts.</p>
-      <p style="margin-bottom:0; color:var(--ink-faint); font-size:12px;">This is a plain-language summary, not a legal document.</p>
+      <h4>Compression happens entirely in your browser</h4>
+      <p>When you drop a file into Shrink, it's read straight from disk into memory by your browser's own JavaScript engine. Images are decoded onto an in-memory canvas and re-encoded there; PDFs are parsed and rebuilt page-by-page using pdf.js and pdf-lib, both of which run as ordinary JavaScript inside this tab. At no point during compression is the file — or any part of its contents — transmitted to a server, uploaded to cloud storage, or written anywhere outside your device's memory and, once you choose to download it, your own downloads folder.</p>
+      <p>Because there's no upload step, this also means Shrink's operator has no technical ability to see, log, or retain the files you compress, and compression itself works exactly the same whether you're online or offline.</p>
+
+      <h4>The optional AI assistant</h4>
+      <p>Shrink includes an optional assistant that can suggest a sensible target size and summarize a file's characteristics. It only runs when you open a file's AI panel or use "Analyze all" — it is never required for, and never affects, ordinary compression. When it does run, it does not receive your file. Instead, Shrink computes a small set of measured properties locally — dimensions, page count, an estimated complexity score, whether an image has transparency, and similar metadata — and sends only that description to whichever AI provider you've selected.</p>
+
+      <h4>How AI requests are routed</h4>
+      <p>AI requests — for every provider, whether you've supplied your own API key or not — pass through a small relay that Shrink operates. What happens there depends on your setup:</p>
+      <ul>
+        <li><strong>With your own key:</strong> the relay forwards your request to the provider you chose, using your key, and passes the response straight back. The relay exists as a pass-through hop because some providers' APIs aren't reliably reachable directly from a browser tab; it does not persist your key or your request content.</li>
+        <li><strong>Without a key (Gemini or Groq only):</strong> the relay substitutes a shared key that the site operator maintains, and applies a small daily usage limit per browser so one visitor can't exhaust the shared quota for everyone else. OpenAI and Anthropic have no shared key — those two always require your own key.</li>
+      </ul>
+      <p>That daily limit is tracked using a random, anonymous identifier generated the first time you use the AI assistant and stored only in this browser's local storage. It isn't a login, isn't tied to any account, and carries no personal information — it exists solely so the shared-key quota can be measured per visitor.</p>
+
+      <h4>API keys</h4>
+      <p>Any API key you add in AI settings is stored only in this browser's local storage, on your device. It's never written to a server Shrink controls, never logged, and never shared with anyone besides the AI provider the key belongs to. You can remove a saved key at any time from AI settings, which deletes it from local storage immediately.</p>
+
+      <h4>The relay's routing token</h4>
+      <p>Requests to the relay include a fixed routing value. This value ships in this page's own source code, so it's visible to anyone who inspects it — it is not a secret and provides no real authentication. Its only job is adding light friction against scripts hitting the relay directly to drain the shared AI quota; it isn't a security boundary of any kind.</p>
+
+      <h4>No tracking, no analytics, no advertising</h4>
+      <p>This page sets no cookies, runs no analytics or advertising scripts, and doesn't fingerprint your browser. The only browser storage Shrink uses is local storage, and only for three things: your saved AI provider/key/model preferences, your chosen light/dark theme, and the anonymous quota identifier described above.</p>
+
+      <h4>Your choices</h4>
+      <ul>
+        <li>Use Shrink for compression only and never open AI settings — no AI-related network request is ever made.</li>
+        <li>Remove a saved API key at any time from AI settings.</li>
+        <li>Clear this browser's local storage (via your browser's own settings) to remove all saved preferences and the anonymous quota identifier.</li>
+        <li>Open your browser's network inspector while using Shrink to verify any of the above directly.</li>
+      </ul>
+
+      <p style="margin-bottom:0; color:var(--ink-faint); font-size:12px;">This is a plain-language summary of how Shrink actually behaves, written for accuracy rather than as a legal document.</p>
     </div>
     <div class="modal-actions">
       <span class="modal-actions-spacer"></span>
@@ -707,7 +748,7 @@
 </div>
 
 <div class="modal-overlay" id="aiModalOverlay">
-  <form class="modal" id="aiModalForm" role="dialog" aria-labelledby="aiModalTitle" aria-describedby="aiModalDesc" aria-modal="true">
+  <form class="modal modal-wide" id="aiModalForm" role="dialog" aria-labelledby="aiModalTitle" aria-describedby="aiModalDesc" aria-modal="true">
     <div class="modal-title" id="aiModalTitle">
       <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/></svg>
       AI assistant
