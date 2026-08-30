@@ -2,29 +2,50 @@ SHRINK — PROPRIETARY LICENSE
 
 Copyright © 2026 Ritam Saha. All rights reserved.
 
-1. Scope
-This license applies to the original software, source code, original interface design, original text, and original assets created for the Shrink application by Ritam Saha (collectively, the “Shrink Materials”), except for third-party components identified in THIRD_PARTY_NOTICES.txt.
+Last updated: 30 August 2026
 
-2. Permission to use the hosted application
-You may access and use the publicly hosted Shrink application for its intended personal or business purpose, subject to any applicable Terms of Use published by the operator.
+IMPORTANT: This license applies only to the original Shrink materials identified below. Third-party software, fonts, code, services, and other materials remain subject to their own terms and licenses as described in THIRD_PARTY_NOTICES.txt.
 
-3. Source-code restrictions
-Unless you receive prior written permission from the copyright holder, you may not:
-- copy, publish, mirror, or redistribute the Shrink source code;
-- sell, sublicense, rent, or otherwise commercially redistribute the Shrink source code;
-- modify the Shrink source code and distribute or publish a modified version;
-- create a competing service substantially based on the Shrink source code;
-- remove or obscure copyright, license, or attribution notices belonging to Shrink;
-- represent the Shrink Materials as your own work.
+1. Covered materials
 
-4. Third-party components
-Third-party libraries used by Shrink are not covered by this proprietary license. Their respective copyright and license terms continue to apply. See THIRD_PARTY_NOTICES.txt.
+This license covers the original materials created by Ritam Saha for the Shrink project, including the original source code, original application interface and visual design, original text and documentation, original landing-page content, and original assets, except to the extent that a particular item incorporates or depends on third-party material.
 
-5. No transfer of ownership
-This license does not transfer ownership or copyright in the Shrink Materials. All rights not expressly granted are reserved by the copyright holder.
+2. Hosted application
 
-6. Disclaimer
-The Shrink Materials are provided “as is”, to the maximum extent permitted by applicable law, without warranties of any kind. The copyright holder is not liable for claims, damages, or other liability arising from use of the source code or application, except to the extent liability cannot lawfully be excluded.
+You may access and use the publicly hosted Shrink application for its intended personal or business purposes, subject to any applicable terms, notices, and laws.
 
-7. Acceptance
-By copying, modifying, redistributing, or otherwise using the Shrink source code in a manner that requires permission under this license, you agree to be bound by these terms. If you do not agree, you may not use the source code except as allowed by applicable third-party licenses or law.
+3. Source-code rights
+
+No permission is granted to copy, publish, mirror, redistribute, sublicense, sell, rent, modify for distribution, or create a competing service substantially based on the covered Shrink materials, except with prior written permission from the copyright holder or where a right is expressly provided by applicable law or a separate third-party license.
+
+Without limiting the above, you may not:
+
+- publish or redistribute substantial portions of the Shrink source code;
+- distribute modified or derivative versions of the Shrink source code;
+- remove or obscure Shrink copyright, license, or attribution notices;
+- represent original Shrink materials as your own work; or
+- use the original Shrink materials as the substantial basis of a competing hosted service.
+
+4. Third-party materials
+
+Shrink includes and may dynamically load third-party libraries and codecs. Those materials are not covered by this proprietary license. Their copyright, license terms, attribution requirements, and other applicable notices remain in effect. See THIRD_PARTY_NOTICES.txt for the current inventory of material intentionally included in or loaded by Shrink.
+
+5. External services
+
+Shrink may optionally integrate with external services, including AI providers or other hosted APIs. Those services are not part of the proprietary Shrink materials and remain governed by their own terms, documentation, privacy policies, and license or service agreements.
+
+6. Ownership
+
+All copyright and other rights in the original Shrink materials remain with Ritam Saha. This license does not transfer ownership or grant any rights except those expressly stated here. All rights not expressly granted are reserved.
+
+7. Disclaimer
+
+The covered Shrink materials are provided “as is” to the maximum extent permitted by applicable law, without warranties of any kind. To the maximum extent permitted by law, the copyright holder disclaims liability for claims, damages, or other liability arising from use of the covered materials, except where liability cannot lawfully be excluded.
+
+8. Acceptance
+
+Any use of the Shrink source code or other covered materials that requires permission under this license constitutes acceptance of these terms. If you do not agree to these terms, do not copy, modify, distribute, or otherwise use the covered materials except as permitted by applicable law or by the separate license of a third-party component.
+
+9. No trademark grant
+
+This license does not grant permission to use the “Shrink” name, branding, logos, or other identifying marks except as necessary to identify the publicly hosted application or as otherwise authorized in writing.
