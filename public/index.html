@@ -3749,10 +3749,23 @@
   el.compressAllBtn.addEventListener("click", async function(){
     el.compressAllBtn.setAttribute("disabled", "true"); el.compressAllBtn.textContent = "Compressing…";
     var records = Array.from(files.values()).filter(function(r){ return r.category !== "unsupported"; });
-    for (var i = 0; i < records.length; i++){
-      if (!files.has(records[i].id)) continue;  // removed / cleared while the batch was running
-      await compressOne(records[i]);
+    // Each compression spends most of its time awaiting canvas/WASM callbacks rather
+    // than pegging the CPU continuously, so running a few files at once — instead of
+    // strictly one-at-a-time — cuts real wall-clock time for a batch noticeably. The
+    // cap is intentionally small (not unlimited) to stay gentle on memory, especially
+    // for large PDFs that hold rendered page bitmaps in memory while encoding.
+    var CONCURRENCY = 3;
+    var next = 0;
+    async function worker(){
+      while (next < records.length){
+        var record = records[next++];
+        if (!files.has(record.id)) continue; // removed / cleared while the batch was running
+        await compressOne(record);
+      }
     }
+    var workers = [];
+    for (var w = 0; w < Math.min(CONCURRENCY, records.length); w++) workers.push(worker());
+    await Promise.all(workers);
     el.compressAllBtn.removeAttribute("disabled"); el.compressAllBtn.textContent = "Compress all";
   });
 
