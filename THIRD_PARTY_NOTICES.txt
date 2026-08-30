@@ -2,27 +2,62 @@ SHRINK — THIRD-PARTY NOTICES
 
 Copyright © 2026 Ritam Saha for the original Shrink Materials.
 
-Shrink currently loads the following third-party JavaScript libraries from cdnjs. They are not owned by Shrink and are not covered by Shrink’s proprietary license.
+Last updated: 30 August 2026
+
+This file identifies third-party software and external services used by the Shrink application. These materials are not owned by Ritam Saha unless expressly stated otherwise, are not covered by Shrink’s proprietary license, and remain subject to their own copyright and license terms.
+
+A. JAVASCRIPT LIBRARIES AND CODECS
 
 1. PDF.js 3.11.174
 Project: Mozilla PDF.js
+Purpose: PDF parsing and page rendering in the browser.
 License: Apache License 2.0
 Repository: https://github.com/mozilla/pdf.js
-License text: https://www.apache.org/licenses/LICENSE-2.0
+License: https://www.apache.org/licenses/LICENSE-2.0
 
 2. JSZip 3.10.1
 Project: JSZip
-License: MIT OR GPL-3.0-or-later (Shrink uses the permissive MIT option)
+Purpose: ZIP/archive handling where used by the application.
+License: MIT OR GPL-3.0-or-later; Shrink relies on the MIT licensing option for this dependency.
 Repository: https://github.com/Stuk/jszip
 License information: https://github.com/Stuk/jszip/blob/main/LICENSE.markdown
 
 3. pdf-lib 1.17.1
 Project: pdf-lib
+Purpose: PDF document construction and manipulation.
 License: MIT
 Repository: https://github.com/Hopding/pdf-lib
-License text: https://github.com/Hopding/pdf-lib/blob/master/LICENSE.md
+License: https://github.com/Hopding/pdf-lib/blob/master/LICENSE.md
 
-The exact versions above are the versions referenced by the current Shrink HTML. If these dependencies are upgraded, review their licenses again and update this notice as needed.
+4. @jsquash/jpeg
+Project: jSquash
+Codec: MozJPEG
+Purpose: Optional JPEG refinement using WebAssembly in supported environments.
+Version: The production page currently loads the package from the public CDN endpoint without a package version in the JavaScript module URL. The deployed application should therefore be treated as depending on the package version served by that endpoint at runtime.
+License: Apache License 2.0 for the jSquash package. The underlying MozJPEG codec is separately licensed; consult the upstream project notices for the codec distribution included by the package.
+Repository: https://github.com/jamsinclair/jSquash
+Package: https://www.npmjs.com/package/@jsquash/jpeg
+License information: https://github.com/jamsinclair/jSquash/blob/main/LICENSE
 
-Other external services
-Shrink can optionally communicate with Google Gemini, Groq, OpenAI, and Anthropic through their APIs. Those services are external services, not libraries included under this project license. Their respective terms, trademarks, API terms, and privacy policies remain independent of Shrink.
+B. EXTERNAL CDN / NETWORK DELIVERY
+
+The application may retrieve third-party runtime resources from public CDNs, including cdnjs and unpkg. CDN operators are service providers and are not part of the Shrink source-code license.
+
+Where a third-party library is loaded remotely, the library’s own license remains applicable regardless of the delivery CDN.
+
+C. OPTIONAL EXTERNAL SERVICES
+
+The application may optionally communicate with external AI/API providers, including:
+
+- Google Gemini
+- Groq
+- OpenAI
+- Anthropic
+
+These are hosted services rather than software bundled under the Shrink proprietary license. Their trademarks, API terms, acceptable-use rules, pricing, privacy policies, and other contractual terms remain independent of Shrink.
+
+D. ATTRIBUTION AND LICENSE CHANGES
+
+Third-party copyright notices and license obligations must be preserved when required by the applicable license. If a dependency is upgraded, replaced, bundled locally, or newly introduced, review its current license and update this file accordingly.
+
+This notice is an inventory for the Shrink project. It is not a substitute for the complete license text of any third-party project. Users should consult the upstream license referenced above for the authoritative terms.
