@@ -1,0 +1,28 @@
+SHRINK — THIRD-PARTY NOTICES
+
+Copyright © 2026 Ritam Saha for the original Shrink Materials.
+
+Shrink currently loads the following third-party JavaScript libraries from cdnjs. They are not owned by Shrink and are not covered by Shrink’s proprietary license.
+
+1. PDF.js 3.11.174
+Project: Mozilla PDF.js
+License: Apache License 2.0
+Repository: https://github.com/mozilla/pdf.js
+License text: https://www.apache.org/licenses/LICENSE-2.0
+
+2. JSZip 3.10.1
+Project: JSZip
+License: MIT OR GPL-3.0-or-later (Shrink uses the permissive MIT option)
+Repository: https://github.com/Stuk/jszip
+License information: https://github.com/Stuk/jszip/blob/main/LICENSE.markdown
+
+3. pdf-lib 1.17.1
+Project: pdf-lib
+License: MIT
+Repository: https://github.com/Hopding/pdf-lib
+License text: https://github.com/Hopding/pdf-lib/blob/master/LICENSE.md
+
+The exact versions above are the versions referenced by the current Shrink HTML. If these dependencies are upgraded, review their licenses again and update this notice as needed.
+
+Other external services
+Shrink can optionally communicate with Google Gemini, Groq, OpenAI, and Anthropic through their APIs. Those services are external services, not libraries included under this project license. Their respective terms, trademarks, API terms, and privacy policies remain independent of Shrink.

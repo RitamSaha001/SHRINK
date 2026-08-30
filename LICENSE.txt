@@ -1,0 +1,30 @@
+SHRINK — PROPRIETARY LICENSE
+
+Copyright © 2026 Ritam Saha. All rights reserved.
+
+1. Scope
+This license applies to the original software, source code, original interface design, original text, and original assets created for the Shrink application by Ritam Saha (collectively, the “Shrink Materials”), except for third-party components identified in THIRD_PARTY_NOTICES.txt.
+
+2. Permission to use the hosted application
+You may access and use the publicly hosted Shrink application for its intended personal or business purpose, subject to any applicable Terms of Use published by the operator.
+
+3. Source-code restrictions
+Unless you receive prior written permission from the copyright holder, you may not:
+- copy, publish, mirror, or redistribute the Shrink source code;
+- sell, sublicense, rent, or otherwise commercially redistribute the Shrink source code;
+- modify the Shrink source code and distribute or publish a modified version;
+- create a competing service substantially based on the Shrink source code;
+- remove or obscure copyright, license, or attribution notices belonging to Shrink;
+- represent the Shrink Materials as your own work.
+
+4. Third-party components
+Third-party libraries used by Shrink are not covered by this proprietary license. Their respective copyright and license terms continue to apply. See THIRD_PARTY_NOTICES.txt.
+
+5. No transfer of ownership
+This license does not transfer ownership or copyright in the Shrink Materials. All rights not expressly granted are reserved by the copyright holder.
+
+6. Disclaimer
+The Shrink Materials are provided “as is”, to the maximum extent permitted by applicable law, without warranties of any kind. The copyright holder is not liable for claims, damages, or other liability arising from use of the source code or application, except to the extent liability cannot lawfully be excluded.
+
+7. Acceptance
+By copying, modifying, redistributing, or otherwise using the Shrink source code in a manner that requires permission under this license, you agree to be bound by these terms. If you do not agree, you may not use the source code except as allowed by applicable third-party licenses or law.
