@@ -12,6 +12,7 @@
     .nav-link.primary-link{min-width:118px;height:38px;border-color:color-mix(in srgb,var(--accent) 22%,var(--line));color:var(--accent)}
     .nav-link:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(27,27,24,.07)}
     .nav-link:active{transform:translateY(0) scale(.985)}
+    .nav-link:focus-visible,.theme:focus-visible,.btn:focus-visible,.target-option:focus-visible,.related a:focus-visible,.faq summary:focus-visible{outline:3px solid color-mix(in srgb,var(--accent) 32%,transparent);outline-offset:3px}
     .hero{padding-top:68px !important;padding-bottom:28px !important}
     .visual{margin-top:0 !important;position:relative;overflow:hidden;will-change:transform}
     .visual::before{content:"";position:absolute;inset:-45% -20%;pointer-events:none;opacity:.5;background:linear-gradient(105deg,transparent 42%,rgba(255,255,255,.34) 50%,transparent 58%);transform:translateX(-72%);transition:transform 1.2s cubic-bezier(.16,1,.3,1)}
@@ -31,20 +32,29 @@
     .target-meter span{transition:width .45s cubic-bezier(.16,1,.3,1)}
     .reveal{opacity:0;transform:translateY(18px);transition:opacity .65s ease,transform .65s cubic-bezier(.16,1,.3,1)}
     .reveal.is-visible{opacity:1;transform:none}
+    .reveal[data-stagger='1']{transition-delay:.04s}.reveal[data-stagger='2']{transition-delay:.08s}.reveal[data-stagger='3']{transition-delay:.12s}.reveal[data-stagger='4']{transition-delay:.16s}
     .decision-card{margin-top:18px;border:1px solid var(--line);border-radius:20px;background:var(--surface-2);padding:20px 22px;display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start}
     .decision-icon{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-weight:800}
     .decision-card h2{font-size:15px;letter-spacing:-.02em;margin:1px 0 6px}.decision-card p{margin:0;color:var(--soft);font-size:13px;line-height:1.65}.decision-card strong{color:var(--ink)}
+    .ai-cue{margin-top:10px;display:inline-flex;align-items:center;gap:7px;font-size:11px;color:var(--muted);padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:color-mix(in srgb,var(--surface) 74%,transparent)}
+    .ai-cue::before{content:"✦";color:var(--accent);font-size:11px}.ai-cue strong{font-weight:750;color:var(--soft)}
+    .read-progress{position:fixed;left:0;top:0;height:2px;width:0;background:var(--accent);z-index:80;pointer-events:none;transition:width .08s linear}
     .section{scroll-margin-top:88px}
-    @media(max-width:800px){.nav-link.primary-link{min-width:108px;height:40px}.visual-body::before{display:none}.hero{padding-top:48px !important}.decision-card{grid-template-columns:1fr;padding:18px}.decision-icon{display:none}}
-    @media(prefers-reduced-motion:reduce){.nav-link,.visual,.visual::before,.file-illus,.file-sheet,.target-panel,.target-size,.target-option,.target-meter span,.reveal{transition:none !important;animation:none !important}}
+    @media(max-width:800px){.nav-link.primary-link{min-width:108px;height:40px}.visual-body::before{display:none}.hero{padding-top:48px !important}.decision-card{grid-template-columns:1fr;padding:18px}.decision-icon{display:none}.ai-cue{margin-top:8px}}
+    @media(prefers-reduced-motion:reduce){.nav-link,.visual,.visual::before,.file-illus,.file-sheet,.target-panel,.target-size,.target-option,.target-meter span,.reveal{transition:none !important}.read-progress{transition:none}}
   `;
   document.head.appendChild(injected);
+
+  const progress = document.createElement('div');
+  progress.className = 'read-progress';
+  progress.setAttribute('aria-hidden', 'true');
+  document.body.appendChild(progress);
 
   const navActions = document.querySelector('.nav-actions');
   if (navActions) {
     const path = location.pathname.toLowerCase();
     const isPdf = path.includes('pdf') || path.includes('reduce-pdf');
-    const isImage = path.includes('image') || path.includes('jpg') || path.includes('png');
+    const isImage = path.includes('image') || path.includes('jpg') || path.includes('png') || path.includes('webp') || path.includes('gif') || path.includes('bmp') || path.includes('svg');
     const existing = navActions.querySelector('.primary-link');
     if (!existing) {
       const link = document.createElement('a');
@@ -68,7 +78,7 @@
   const pagePath = location.pathname.toLowerCase();
   const exact = pagePath.match(/(\d+)(kb|mb)/i);
   const isPdfPage = pagePath.includes('pdf') || pagePath.includes('reduce-pdf');
-  const isImagePage = !isPdfPage && (pagePath.includes('image') || pagePath.includes('jpg') || pagePath.includes('png'));
+  const isImagePage = !isPdfPage && (pagePath.includes('image') || pagePath.includes('jpg') || pagePath.includes('png') || pagePath.includes('webp') || pagePath.includes('gif') || pagePath.includes('bmp') || pagePath.includes('svg'));
   const targetValue = exact ? `${exact[1]}${exact[2].toUpperCase()}` : '';
   const decisionText = targetValue
     ? (isPdfPage
@@ -82,6 +92,15 @@
     card.setAttribute('data-decision-card', 'true');
     card.innerHTML = `<div class="decision-icon" aria-hidden="true">✓</div><div><h2>Before you start</h2><p>${decisionText.replace('destination constraint','<strong>destination constraint</strong>')}</p></div>`;
     document.querySelector('.hero').insertAdjacentElement('afterend', card);
+  }
+
+  const micro = document.querySelector('.micro');
+  if (micro && !document.querySelector('[data-ai-cue]') && (isPdfPage || isImagePage)) {
+    const cue = document.createElement('span');
+    cue.className = 'ai-cue';
+    cue.setAttribute('data-ai-cue', 'true');
+    cue.innerHTML = '<strong>Optional AI-assisted tools</strong> are available in Shrink for supported workflows.';
+    micro.appendChild(cue);
   }
 
   const applyTarget = (button, scope = document) => {
@@ -132,11 +151,20 @@
     }
   }
 
-  document.querySelectorAll('.section,.final,.related,.visual,.decision-card').forEach(el => el.classList.add('reveal'));
+  const revealEls = document.querySelectorAll('.section,.final,.related,.visual,.decision-card');
+  revealEls.forEach((el, index) => { el.classList.add('reveal'); const n = Math.min(4, (index % 4) + 1); el.setAttribute('data-stagger', String(n)); });
   if ('IntersectionObserver' in window && !reduceMotion) {
     const observer = new IntersectionObserver(entries => { entries.forEach(entry => { if (entry.isIntersecting) { entry.target.classList.add('is-visible'); observer.unobserve(entry.target); } }); }, { threshold: .12, rootMargin: '0px 0px -8% 0px' });
     document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
   } else document.querySelectorAll('.reveal').forEach(el => el.classList.add('is-visible'));
+
+  const updateProgress = () => {
+    const doc = document.documentElement;
+    const max = Math.max(1, doc.scrollHeight - window.innerHeight);
+    progress.style.width = `${Math.min(100, Math.max(0, (window.scrollY / max) * 100))}%`;
+  };
+  window.addEventListener('scroll', updateProgress, { passive: true });
+  updateProgress();
 
   const copy = document.querySelector('[data-copy-link]');
   if (copy) copy.addEventListener('click', async () => { try { await navigator.clipboard.writeText(window.location.href); copy.textContent = 'Link copied'; setTimeout(() => copy.textContent = 'Copy page link', 1400); } catch (_) { copy.textContent = 'Copy unavailable'; setTimeout(() => copy.textContent = 'Copy page link', 1400); } });
