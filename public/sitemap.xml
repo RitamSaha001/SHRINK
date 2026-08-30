@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://shrink.saharitam171.workers.dev/</loc>
-  </url>
+  <url><loc>https://shrink.saharitam171.workers.dev/</loc></url>
+  <url><loc>https://shrink.saharitam171.workers.dev/compress-pdf-to-100kb/</loc></url>
+  <url><loc>https://shrink.saharitam171.workers.dev/compress-pdf-to-200kb/</loc></url>
+  <url><loc>https://shrink.saharitam171.workers.dev/compress-pdf-to-500kb/</loc></url>
+  <url><loc>https://shrink.saharitam171.workers.dev/compress-image-to-50kb/</loc></url>
+  <url><loc>https://shrink.saharitam171.workers.dev/compress-image-to-100kb/</loc></url>
+  <url><loc>https://shrink.saharitam171.workers.dev/compress-jpg-to-100kb/</loc></url>
+  <url><loc>https://shrink.saharitam171.workers.dev/compress-jpg-to-200kb/</loc></url>
+  <url><loc>https://shrink.saharitam171.workers.dev/compress-png-to-200kb/</loc></url>
+  <url><loc>https://shrink.saharitam171.workers.dev/reduce-pdf-size/</loc></url>
+  <url><loc>https://shrink.saharitam171.workers.dev/compress-image-to-exact-size/</loc></url>
 </urlset>
